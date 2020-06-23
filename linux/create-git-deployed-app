@@ -1,0 +1,54 @@
+#!/bin/sh
+#echo "Nome dell'applicazione da creare"
+#read APP
+
+if [ $# -eq 0 ]
+  then
+    echo "No app name  supplied"
+    exit 1
+fi
+
+APP_NAME="$1"
+echo $A, $1
+echo "Creating $APPNAME folder git"
+sudo mkdir -p "/srv/git/${APP_NAME}.git"
+
+echo "Init the repo as an empty git repository"
+cd /srv/git/${APP_NAME}.git || exit
+sudo git init --bare
+
+echo "Define group to users, recursively"
+sudo chgrp -R users
+
+echo "Define permission recursively on sub-directories"
+# g = group, + add rights, r = read, w = write, X = directories only
+# . = curent directory as a reference
+sudo chmod -R g+rwX .
+
+echo "Make the directory a Git shared repo"
+sudo git config core.sharedRepository group
+
+cd /srv/git/${APP_NAME}.git/hooks || exit
+
+sudo tee post-receive <<EOF
+#!/bin/bash
+
+# Cartella di produzione
+TARGET="/opt/sites/${APP_NAME}.git"
+# Cartella temporanea dedicata al deploy
+TEMP="/srv/tmp/${APP_NAME}"
+# Il repository GIT
+REPO="/srv/git/${APP_NAME}.git"
+# Fase di deploy
+mkdir -p $TEMP
+git --work-tree=$TEMP --git-dir=$REPO checkout -f
+cd $TEMP
+# eventuali operazioni prima del deploy es npm install, npm run build…
+# … GENERATE_SOURCEMAP=false  npm run build
+cd /
+rm -rf $TARGET
+mv $TEMP $TARGE
+
+EOF
+
+sudo chmod +x post-receive
