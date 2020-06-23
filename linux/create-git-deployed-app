@@ -9,12 +9,29 @@ if [ $# -eq 0 ]
 fi
 
 APP_NAME="$1"
-echo $A, $1
+
+DIR_TMP="/srv/tmp/"
+DIR_WWW="/opt/sites/"
+DIR_GIT="/srv/git/"
+DIR_ENV="/srv/env/"
+
+GIT=$DIR_GIT$APP_NAME.git
+TMP=$DIR_TMP$APP_NAME
+WWW=$DIR_WWW$APP_NAME
+
+echo "- git:" "$GIT"
+echo "- tmp:" "$TMP"
+echo "- www:" "$WWW"
+
+export GIT
+export TMP
+export WWW
+
 echo "Creating $APPNAME folder git"
-sudo mkdir -p "/srv/git/${APP_NAME}.git"
+sudo mkdir -p "$GIT"
 
 echo "Init the repo as an empty git repository"
-cd /srv/git/${APP_NAME}.git || exit
+cd "$GIT" || exit
 sudo git init --bare
 
 echo "Define group to users, recursively"
@@ -28,27 +45,28 @@ sudo chmod -R g+rwX .
 echo "Make the directory a Git shared repo"
 sudo git config core.sharedRepository group
 
-cd /srv/git/${APP_NAME}.git/hooks || exit
+cd "$GIT/hooks" || exit
 
 sudo tee post-receive <<EOF
 #!/bin/bash
 
 # Cartella di produzione
-TARGET="/opt/sites/${APP_NAME}.git"
+WWW="${WWW}"
 # Cartella temporanea dedicata al deploy
-TEMP="/srv/tmp/${APP_NAME}"
+TMP="${TMP}"
 # Il repository GIT
-REPO="/srv/git/${APP_NAME}.git"
+REPO="${GIT}"
 # Fase di deploy
-mkdir -p $TEMP
-git --work-tree=$TEMP --git-dir=$REPO checkout -f
-cd $TEMP
+mkdir -p \$TMP
+git --work-tree=\$TMP --git-dir=\$REPO checkout -f
+cd \$TMP
 # eventuali operazioni prima del deploy es npm install, npm run build…
 # … GENERATE_SOURCEMAP=false  npm run build
 cd /
-rm -rf $TARGET
-mv $TEMP $TARGE
+rm -rf \$WWW
+mv \$TMP \$WWW
 
 EOF
 
 sudo chmod +x post-receive
+
